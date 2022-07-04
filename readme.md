@@ -1,10 +1,8 @@
-# Functional Programming Jargon
+# Functional Programming Jargon in Julia
 
 Functional programming (FP) provides many advantages, and its popularity has been increasing as a result. However, each programming paradigm comes with its own unique jargon and FP is no exception. By providing a glossary, we hope to make learning FP easier.
 
-This is a fork of [Functional Programming Jargon](https://github.com/jmesyou/functional-programming-jargon). Examples are presented in Python3.
-
-This document attempts to adhere to [PEP8](https://www.python.org/dev/peps/pep-0008/) as best as possible.
+This is a fork of [Functional Programming Jargon](https://github.com/jmesyou/functional-programming-jargon). Examples are presented in Julia[julialang.org].
 
 This document is WIP and pull requests are welcome!
 
@@ -77,31 +75,27 @@ __Table of Contents__
 
 The number of arguments a function takes. From words like unary, binary, ternary, etc. This word has the distinction of being composed of two suffixes, "-ary" and "-ity." Addition, for example, takes two arguments, and so it is defined as a binary function or a function with an arity of two. Such a function may sometimes be called "dyadic" by people who prefer Greek roots to Latin. Likewise, a function that takes a variable number of arguments is called "variadic," whereas a binary function must be given two and only two arguments, currying and partial application notwithstanding (see below).
 
-```python
-from inspect import signature 
+```julia
+julia> myadd(x,y) = x + y
 
-add = lambda a, b: a + b
+julia> arity = first(methods(myadd)).nargs - 1
+2
 
-arity = len(signature(add).parameters)
-print(arity) # 2
-
-# The arity of add is 2
+# The arity of `myadd` is 2
 ```
 
 ## Higher-Order Functions (HOF)
 
 A function which takes a function as an argument and/or returns a function.
 
-```python
-filter = lambda predicate, xs: [x for x in xs if predicate(xs)] 
-```
+```julia
+julia> filter(iseven, 1:5)
+2-element Vector{Int64}:
+ 2
+ 4
 
-```python
-is_a = lambda T: lambda x: type(x) is T
-```
-
-```python
-filter(is_a(int), [0, '1', 2, None]) # [0, 2]
+julia> sum(abs, [-1, -2, 3])
+6
 ```
 
 ## Closure
@@ -113,20 +107,17 @@ A closure is a scope which captures local variables of a function for access eve
 ie. they allow referencing a scope after the block in which the variables were declared has finished executing.
 
 
-```python
-add_to = lambda x: lambda y: x + y
-add_to_five = add_to(5)
-add_to_five(3) # returns 8
+```julia
+# this function returns an anonymous function that **closes over** `init`
+julia> add_to(init) = x -> x + init
+
+julia> add_to_five = add_to(5)
+
+julia> add_to_five(3)
+8
 ```
-The function ```add_to()``` returns a function(internally called ```add()```), lets store it in a variable called ```add_to_five``` with a curried call having parameter 5.
 
-Ideally, when the function ```add_to``` finishes execution, its scope, with local variables add, x, y should not be accessible. But, it returns 8 on calling ```add_to_five()```. This means that the state of the function ```add_to``` is saved even after the block of code has finished executing, otherwise there is no way of knowing that ```add_to``` was called as ```add_to(5)``` and the value of x was set to 5.
-
-Lexical scoping is the reason why it is able to find the values of x and add - the private variables of the parent which has finished executing. This value is called a Closure.
-
-The stack along with the lexical scope of the function is stored in form of reference to the parent. This prevents the closure and the underlying variables from being garbage collected(since there is at least one live reference to it).
-
-Lambda Vs Closure: A lambda is essentially a function that is defined inline rather than the standard method of declaring functions. Lambdas can frequently be passed around as objects.
+Anonymous function Vs Closure: A anonymous is essentially a function that is defined inline rather than the standard method of declaring functions. Lambdas can frequently be passed around as objects.
 
 A closure is a function that encloses its surrounding state by referencing fields external to its body. The enclosed state remains across invocations of the closure.
 
@@ -138,29 +129,23 @@ __Further reading/Sources__
 
 Partially applying a function means creating a new function by pre-filling some of the arguments to the original function.
 
+```julia
+julia> add3(a, b, c) = a + b + c
+add3 (generic function with 1 method)
 
-```python
-# Helper to create partially applied functions
-# Takes a function and some arguments
-partial = lambda f, *args: 
-  # returns a function that takes the rest of the arguments
-  lambda *more_args:
-    # and calls the original function with all of them
-    f(args, more_args)
-# Something to apply
-add3 = lambda a, b, c: a + b + c
-# Partially applying `2` and `3` to `add3` gives you a one-argument function
-five_plus = partial(add3, 2, 3) # (c) => 2 + 3 + c
+julia> partial(f, args...) = x -> f(args..., x)
 
-five_plus(4) # 9
-```
+julia> five_plus = partial(add3, 2, 3)
 
-You can also use `functools.partial` to partially apply a function in Python:
+julia> five_plus(4)
+9
 
-```python
-from functools import partial 
+#special case of 2-arguments original function
+julia> six_plus = Base.Fix1(+, 6)
+(::Base.Fix1{typeof(+), Int64}) (generic function with 1 method)
 
-add_more = partial(add3, 2, 3) # (c) => 2 + 3 + c
+julia> six_plus(7)
+13
 ```
 
 Partial application helps create simpler functions from more complex ones by baking in data when you have it. [Curried](#currying) functions are automatically partially applied.
@@ -172,32 +157,36 @@ The process of converting a function that takes multiple arguments into a functi
 
 Each time the function is called it only accepts one argument and returns a function that takes one argument until all arguments are passed.
 
-```python
-sum = lambda a, b: a + b 
+```julia
+julia> curried_add(a) = b -> a + b
 
-curried_sum = lambda a: lambda b: a + b
+julia> curried_add(40)(2)
+42
 
-curried_sum(40)(2) # 42.
+julia> add2 = curried_add(2)
 
-add2 = curried_sum(2) # (b) => 2 + b
-
-add2(10) # 12
+julia> add2(10)
+12
 ```
 
 ## Auto Currying
 Transforming a function that takes multiple arguments into one that if given less than its correct number of arguments returns a function that takes the rest. When the function gets the correct number of arguments it is then evaluated.
 
-The `toolz` module has an currying decorator which works this way
+The [Curries.jl](https://github.com/MasonProtter/Currier.jl) package has an currying decorator which works this way.
 
 ```python
-from toolz import curry 
+julia> using Currier
 
-@curry
-def add(x, y): return x + y 
+julia> @curried add3(x, y, z) = x + y + z
 
-add(1, 2) # 3
-add(1)    # (y) => 1 + y
-add(1)(2) # 3
+julia> add3(1,2,3)
+6
+
+julia> add3(1,2)(3)
+6
+
+julia> add3(1)(2)(3)
+6
 ```
 
 __Further reading__
@@ -208,68 +197,71 @@ __Further reading__
 
 The act of putting two functions together to form a third function where the output of one function is the input of the other.
 
-```python
-import math 
+```julia
+# `∘` can be typed with \circ<tab>
+julia> floor_and_string = string ∘ floor
 
-compose = lambda f, g: lambda a: f(g(a)) # Definition
-floor_and_str = compose(str, Math.floor) # Usage
-floor_and_string(121.212121) # '121'
+julia> floor_and_string(121.212121)
+"121.0"
 ```
 
 ## Continuation
 
 At any given point in a program, the part of the code that's yet to be executed is known as a continuation.
 
-```python
-print_as_string = lambda num: print(num)
+```julia
+julia> print_as_string(num) = println("Given $num")
 
-# this was previously defined as multi-line function in Javascript
-# however, Python only supports single expression lambdas
-add_one_and_continue = lambda num, cc: cc(num + 1) 
+julia> function add_one_and_continue(num, cc)
+           result = num + 1
+           cc(result)
+       end
 
-add_one_and_continue(2, print_as_string) # 'Given 3'
-```
-
-Continuations are often seen in asynchronous programming when the program needs to wait to receive data before it can continue. The response is often passed off to the rest of the program, which is the continuation, once it's been received.
-
-```python
-continue_program_with = lambda data: ... # Continues program with data
-
-read_file_async('path/to/file', lambda err, response: raise err if err else continue_program_with(response))
+julia> add_one_and_continue(2, print_as_string)
+Given 3
 ```
 
 ## Purity
 
 A function is pure if the return value is only determined by its
-input values, and does not produce side effects.
+input values, and does not produce side effects. Be very careful when
+using [@pure](https://discourse.julialang.org/t/pure-macro/3871) in Julia.
 
-```python
-greet = lambda name: 'Hi, {}'.format(name)
+```julia
+julia> greet(name) = "Hi, $name"
 
-greet('Brianne') # 'Hi, Brianne'
+julia> greet("Brianne")
+"Hi, Brianne"
 ```
 
 As opposed to each of the following:
 
-```python
-name = 'Brianne'
+```julia
+julia> name = "Brianne"
+"Brianne"
 
-greet = lambda: 'Hi, {}'.format(name)
+julia> greet() = "Hi, $name"
+greet (generic function with 2 methods)
 
-greet() # "Hi, Brianne"
+julia> greet()
+"Hi, Brianne"
 ```
 
 The above example's output is based on data stored outside of the function...
 
-```python
-greeting = None
+```julia
+julia> greeting = nothing
 
-def greet(name):
-  global greeting
-  greeting = 'Hi, {}'.format(name)
+julia> function greet(name)
+         global greeting
+         greeting = "Hi, $name"
+         return nothing
+       end
 
-greet('Brianne')
-greeting # "Hi, Brianne"
+julia> greet("Brianne")
+
+julia> greeting
+"Hi, Brianne"
 ```
 
 ... and this one modifies state outside of the function.
@@ -278,78 +270,80 @@ greeting # "Hi, Brianne"
 
 A function or expression is said to have a side effect if apart from returning a value, it interacts with (reads from or writes to) external mutable state.
 
-```python
-different_ever_time = list()
-```
-
-```python
-print('IO is a side effect!')
+```julia
+println("IO is a side effect!")
 ```
 
 ## Idempotent
 
 A function is idempotent if reapplying it to its result does not produce a different result.
 
-```
-f(f(x)) ≍ f(x)
-```
-
-```python
-import math
-
-math.abs(math.abs(10))
+```julia
+identity(identity(10))
 ```
 
-```python
-sorted(sorted(sorted([2, 1])))
+```julia
+# this relys on sort algorithm being stable
+sort(sort(sort([2, 1])))
 ```
 
 ## Point-Free Style
 
 Writing functions where the definition does not explicitly identify the arguments used. This style usually requires [currying](#currying) or other [Higher-Order functions](#higher-order-functions-hof). A.K.A Tacit programming.
 
-```python
+```julia
 # Given
-map = lambda fn: lambda xs: [fn(x) for x in xs]
-add = lambda a: lambda b: a + b
+julia> mymap = fn -> vec -> map(fn, vec)
+julia> myadd = a -> b -> a + b
 
 # Then
-
 # Not points-free - `numbers` is an explicit argument
-increment_all = lambda numbers: map(add(1))(numbers)
+julia> increment_all = numbers -> mymap(myadd(1))(numbers)
+
+julia> increment_all([4,7,8])
+3-element Vector{Int64}:
+ 5
+ 8
+ 9
 
 # Points-free - The list is an implicit argument
-increment_all2 = map(add(1))
+julia> increment_all2 = mymap(myadd(1))
+
+julia> increment_all([4,7,8])
+3-element Vector{Int64}:
+ 5
+ 8
+ 9
 ```
 
 `increment_all` identifies and uses the parameter `numbers`, so it is not points-free.  `increment_all2` is written just by combining functions and values, making no mention of its arguments.  It __is__ points-free.
 
-Points-free function definitions look just like normal assignments without `def` or `lambda`.
+Points-free function definitions look just like normal assignments without `function ...` or `blah -> `.
 
 ## Predicate
 A predicate is a function that returns true or false for a given value. A common use of a predicate is as the callback for array filter.
 
-```python
-predicate = lambda a: a > 2
-
-filter(predicate, [1, 2, 3, 4]) # [3, 4]
+```julia
+julia> filter(>(2), [1, 2, 3, 4])
+2-element Vector{Int64}:
+ 3
+ 4
 ```
 
 ## Contracts
 
 A contract specifies the obligations and guarantees of the behavior from a function or expression at runtime. This acts as a set of rules that are expected from the input and output of a function or expression, and errors are generally reported whenever a contract is violated.
 
-```python
-def throw(ex):
-  raise ex
+```julia
+julia> add1(num::Integer) = num + 1
 
-# Define our contract : int -> boolean
-contract = lambda value: True if type(value) is int else throw(Exception('Contract violated: expected int -> boolean'))
+julia> add1(num) = throw(ArgumentError("Contract violated: expected `num::Integer`"))
 
-add1 = lambda num: contract(num) and num + 1
+julia> add1(2)
+3
 
-add1(2) # 3
-add1('some string') # Contract violated: expected int -> boolean
+julia> add1("blah")
+ERROR: ArgumentError: Contract violated: expected `num::Integer`
 ```
 
 ## Category
@@ -379,33 +373,24 @@ __Further reading__
 
 Anything that can be assigned to a variable.
 
-```python
-from collections import namedtuple
-Person = namedtuple('Person', 'name age')
+```julia
+('John', 30)
+(name = 'Person', age = 30)
 5
-Person('John', 30)
-lambda a: a
-[1]
-None
+a -> a^2
+[1.0]
+missing
 ```
 
 ## Constant
 
 A variable that cannot be reassigned once defined.
 
-```python
-
-five = 5
-john = Person('John', 30)
+```julia
+const five = 5
 ```
 
 Constants are [referentially transparent](#referential-transparency). That is, they can be replaced with the values that they represent without affecting the result.
-
-With the above two constants the following expression will always return `true`.
-
-```python
-john.age + five == Person('John' 30).age + 5
-```
 
 ## Functor
 
@@ -424,37 +409,59 @@ object.map(compose(f, g)) ≍ object.map(g).map(f)
 
 (`f`, `g` are arbitrary functions)
 
-Iterables in Python are functors since they abide by the two functor rules:
+In Julia `map` takes the first argument as the function:
 
-```python
+```julia
+julia> map(identity, [1,2,3])
+3-element Vector{Int64}:
+ 1
+ 2
+ 3
 
-map(lambda x: x, [1, 2, 3]) # = [1, 2, 3]
-map(lambda x: x, (1, 2, 3)) # = (1, 2, 3)
+julia> map(identity, (1,2,3))
+(1, 2, 3)
 ```
 
 and
 
-```python
-f = lambda x: x + 1
-g = lambda x: x * 2
+```julia
+julia> f(x) = x+1
 
-map(lambda x: f(g(x)), [1, 2, 3]) # = [3, 5, 7]
-map(f, map(g, [1, 2, 3]))         # = [3, 5, 7]
+julia> g(x) = x*2
+
+julia> map(f, map(g, [1,2,3]))
+3-element Vector{Int64}:
+ 3
+ 5
+ 7
+
+julia> map(f∘g, [1,2,3])
+3-element Vector{Int64}:
+ 3
+ 5
+ 7
 ```
 
 ## Pointed Functor
 An object with an `of` function that puts _any_ number of values into it. The following property
-`of(f(x)) == of(x).map(f)` must also hold for any pointed functor.
+`of(f(x)) == of(x).map(f)` must also hold for any pointed functor. [Better explaination](https://stackoverflow.com/questions/39179830/how-to-use-pointed-functor-properly)
 
-We create a custom class `Array` which mimics the original Javascript for a pointed functor.
+```julia 
+# here we think of `Vector` and `Base.map` together as a functor:
 
-```python 
+julia> of(t::AbstractVector{T}, vals...) where T = T[vals...]
 
-class Array(list):
+julia> of([], 3)
+1-element Vector{Any}:
+ 3
 
-  of = lambda *args: Array([a for a in args])
+julia> of(Int[], 3)
+1-element Vector{Int64}:
+ 3
 
-Array.of(1) # [1]
+julia> of(Float64[], 3)
+1-element Vector{Float64}:
+ 3.0
 ```
 
 ## Lift
@@ -463,48 +470,43 @@ Lifting is when you take a value and put it into an object like a [functor](#poi
 
 Some implementations have a function called `lift`, or `liftA2` to make it easier to run functions on functors.
 
-```python
-# OSlash applicative library https://github.com/dbrattli/oslash
-from oslash import List, Applicative # we import the Applicative 
+```julia
+julia> liftA2(fn) = (a, b) -> fn.(a, b) # cheating, rely on broadcast to figure out how to apply `fn`
+liftA2 (generic function with 1 method)
 
-liftA2 = lambda f: lambda a, b:  a.map(f) * b # a, b is of type Applicative where (*) is the apply function.
+julia> mult(a, b) = a * b
+mult (generic function with 1 method)
 
-mult = lambda a: lambda b: a * b # (*) is just regular multiplication
+julia> lifted_mult = liftA2(mult) # this function now works on functors (arrays)
+#5 (generic function with 1 method)
 
-lifted_mult = liftA2(mult) # this function now works on functors like oslash.List
+julia> lifted_mult([1, 2], [3]) # [3, 6]
+2-element Vector{Int64}:
+ 3
+ 6
 
-lifted_mult(List([1, 2]), List([3])) # [3, 6]
-liftA2(lambda a: lambda b: a + b)(List([1, 2]), List([3, 4])) # [4, 5, 5, 6]
+julia> lifted_mult([1, 2], 3)
+2-element Vector{Int64}:
+ 3
+ 6
 
-# or using oslash, it can alternatively be written as
-
-List([1, 2]).lift_a2(mult, List([3]))
-List([1, 2]).lift_a2(lambda a: lambda b: a + b, List([3, 4]))
+julia> lifted_mult([1, 2], [3,4])
+2-element Vector{Int64}:
+ 3
+ 8
 ```
-
-Lifting a one-argument function and applying it does the same thing as `map`.
-
-```python
-increment = lambda x: x + 1
-
-lift(increment)(List([2])) # [3]
-List([2]).map(increment)  # [3]
-```
-
 
 ## Referential Transparency
 
 An expression that can be replaced with its value without changing the
 behavior of the program is said to be referentially transparent.
 
-Say we have function greet:
-
 ```python
-greet = lambda: 'Hello World!'
+greet() = "Hello World!"
 ```
 
 Any invocation of `greet()` can be replaced with `Hello World!` hence greet is
-referentially transparent.
+referentially transparent. In Julia this is trivially true for any `immutable` object.
 
 ##  Equational Reasoning
 
@@ -514,22 +516,27 @@ When an application is composed of expressions and devoid of side effects, truth
 
 An anonymous function that can be treated like a value.
 
-```python 
-def f(a):
-  return a + 1
+```julia 
+julia> f(a) = a + 1
+f (generic function with 1 method)
 
-lambda a: a + 1
+julia> a -> a + 1
+#3 (generic function with 1 method)
 ```
 Lambdas are often passed as arguments to Higher-Order functions.
 
-```python
-List([1, 2]).map(lambda x: x + 1) # [2, 3]
+```julia
+julia> filter(x -> x^2 < 10, 1:5)
+3-element Vector{Int64}:
+ 1
+ 2
+ 3
 ```
 
 You can assign a lambda to a variable.
-
-```python
-add1 = lambda a: a + 1
+```julia
+julia> addone = a -> a + 1
+#1 (generic function with 1 method)
 ```
 
 ## Lambda Calculus
@@ -539,16 +546,13 @@ A branch of mathematics that uses functions to create a [universal model of comp
 
 Lazy evaluation is a call-by-need evaluation mechanism that delays the evaluation of an expression until its value is needed. In functional languages, this allows for structures like infinite lists, which would not normally be available in an imperative language where the sequencing of commands is significant.
 
-```python
-import random
-def rand(): 
-  while True:
-    yield random.randint(1,101)
-```
+```julia
+julia> struct myrand end
 
-```python
-randIter = rand()
-next(randIter) # Each execution gives a random value, expression is evaluated on need.
+julia> Base.iterate(::myrand, state=nothing) = rand()
+
+julia> first(myrand())
+0.1381937787185451
 ```
 
 ## Monoid
@@ -557,72 +561,72 @@ An object with a function that "combines" that object with another of the same t
 
 One simple monoid is the addition of numbers:
 
-```python
-1 + 1 # 2
+```julia
+julia> 1 + 1
+2
 ```
 In this case number is the object and `+` is the function.
 
 An "identity" value must also exist that when combined with a value doesn't change it.
 
-The identity value for addition is `0`.
-```python
-1 + 0 # 1
+The additive identity value for addition is `0`, can also be obtained by `zero()`:
+```julia
+julia> 1 + zero(1)
+1
 ```
 
 It's also required that the grouping of operations will not affect the result (associativity):
-
-```python
-1 + (2 + 3) == (1 + 2) + 3 # true
+```julia
+julia> 1 + (2 + 3) == (1 + 2) + 3
+true
 ```
 
 List concatenation also forms a monoid:
-
-```python
-[1, 2] + [3, 4] # [1, 2, 3, 4]
+```julia
+julia> vcat([1, 2], [3, 4])
+4-element Vector{Int64}:
+ 1
+ 2
+ 3
+ 4
 ```
 
-The identity value is empty array `[]`
-
-```python
-[1, 2] + [] # [1, 2]
+The identity value is empty Int array `Int[]` (can be obtained by `empty()`)
+```julia
+julia> vcat([1, 2], empty([1,2]))
+2-element Vector{Int64}:
+ 1
+ 2
 ```
 
 If identity and compose functions are provided, functions themselves form a monoid:
 
-```python
-identity = lambda a: a
-compose = lambda f, g: lambda x: f(g(x))
-```
-`foo` is any function that takes one argument.
-```
-compose(foo, identity) ≍ compose(identity, foo) ≍ foo
+```julia
+# `foo` is a 1-argument function
+foo∘identity ≍ identity∘foo ≍ foo
 ```
 
 ## Monad
 
 A monad is an object with [`of`](#pointed-functor) and `chain` functions. `chain` is like [`map`](#functor) except it un-nests the resulting nested object.
 
-```python
-# pymonad Monad library https://bitbucket.org/jason_delaat/pymonad
-from pymonad.List import *
-from functools import reduce
-#implementation
-class Array(list):
+```julia
+julia> of(t::AbstractVector{T}, vals...) where T = T[vals...]
 
-  def of(*args): 
-    return Array([a for a in args])
+julia> chain(fn, v) = mapreduce(fn, vcat, v)
 
-  def chain(self, f):
-    return reduce(lambda acc, it: acc + f(it), self[:], [])
-
-  def map(self, f):
-    return [f(x) for x in self[:]]
-
-# Usage
-Array.of('cat,dog', 'fish,bird').chain(lambda a: a.split(',')) # ['cat', 'dog', 'fish', 'bird']
+julia> chain(split, of([], "cat dot", "fish bird"))
+4-element Vector{SubString{String}}:
+ "cat"
+ "dot"
+ "fish"
+ "bird"
 
 # Contrast to map
-Array.of('cat,dog', 'fish,bird').map(lambda a: a.split(',')) # [['cat', 'dog'], ['fish', 'bird']]
+julia> map(split, of([], "cat dot", "fish bird"))
+2-element Vector{Vector{SubString{String}}}:
+ ["cat", "dot"]
+ ["fish", "bird"]
 ```
 
 `of` is also known as `return` in other functional languages.
@@ -630,31 +634,21 @@ Array.of('cat,dog', 'fish,bird').map(lambda a: a.split(',')) # [['cat', 'dog'], 
 
 ## Comonad
 
-An object that has `extract` and `extend` functions.
+An object that has `extract` and `extend` functions. `Ref` is a natural condidate:
 
-```python
-class CoIdentity:
+```julia
+julia> extract(x::Ref) = x[]
 
-  def __init__(self, v):
-    self.val = v
+julia> extend(x::T, f) where T<:Ref = T(f(x[]))
 
-  def extract(self):
-    return self.val
-
-  def extend(f):
-    return CoIdentity(f(self))
-```
-
-Extract takes a value out of a functor.
-
-```python
-CoIdentity(1).extract() # 1
+julia> extract(Ref(1.0))
+1.0
 ```
 
 Extend runs a function on the comonad. The function should return the same type as the comonad.
-
-```python
-CoIdentity(1).extend(lambda co: co.extract() + 1) # CoIdentity(2)
+```julia
+julia> extend(Ref(1.0), x->3) # notice the type is preserved correctly
+Base.RefValue{Float64}(3.0)
 ```
 
 ## Applicative Functor

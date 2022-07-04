@@ -65,9 +65,6 @@ __Table of Contents__
   * [Product type](#product-type)
 * [Option](#option)
 * [Function](#function)
-* [Partial function](#partial-function)
-* [Functional Programming Libraries in Python](#functional-programming-libraries-in-javascript)
-
 
 <!-- /RM -->
 
@@ -655,26 +652,17 @@ Base.RefValue{Float64}(3.0)
 
 An applicative functor is an object with an `ap` function. `ap` applies a function in the object to a value in another object of the same type.
 
-```python
-from functools import reduce
-# Implementation
+```julia
+julia> ap(fn, val) = fn(val)
+ap (generic function with 1 method)
 
-class Array(list):
-
-  def of(*args): 
-    return Array([a for a in args])
-
-  def chain(self, f):
-    return reduce(lambda acc, it: acc + f(it), self[:], [])
-
-  def map(self, f):
-    return [f(x) for x in self[:]]
-
-  def ap(self, xs):
-    return reduce(lambda acc, f: acc + (xs.map(f)), self[:], [])
+julia> ap(fns::Vector, vals) = map(ap, fns, vals)
+ap (generic function with 2 methods)
 
 # Example usage
-Array([lambda a: a + 1]).ap(Array([1])) # [2]
+julia> ap([a->a+1], [1])
+1-element Vector{Int64}:
+ 2
 ```
 
 This is useful if you have two objects and you want to apply a binary function to their contents.
@@ -685,15 +673,18 @@ arg1 = [1, 3]
 arg2 = [4, 5]
 
 # combining function - must be curried for this to work
-add = lambda x: lambda y: x + y
+julia> add(x) = y -> x + y
 
-partially_applied_adds = [add].ap(arg1) # [(y) => 1 + y, (y) => 3 + y]
+julia> partially_applied_adds = map(add, arg1)
 ```
 
 This gives you an array of functions that you can call `ap` on to get the result:
 
-```python
-partially_applied_adds.ap(arg2) # [5, 6, 7, 8]
+```julia
+julia> ap(partially_applied_adds, arg2)
+2-element Vector{Int64}:
+ 5
+ 8
 ```
 
 ## Morphism
@@ -704,12 +695,13 @@ A transformation function.
 
 A function where the input type is the same as the output.
 
-```python
-# uppercase :: String -> String
-uppercase = lambda s: s.upper() 
+```julia
+# String -> String
+julia> uppercase("Aasd")
+"AASD"
 
-# decrement :: Number -> Number
-decrement = lambda x: x - 1
+# Number -> Number
+julia> decrement(num::T)::T = num-1
 ```
 
 ### Isomorphism
@@ -718,65 +710,58 @@ A pair of transformations between 2 types of objects that is structural in natur
 
 For example, 2D coordinates could be stored as an array `[2,3]` or object `{x: 2, y: 3}`.
 
-```python
-# Providing functions to convert in both directions makes them isomorphic.
-from collections import namedtuple
+```julia
+julia> coords_to_pair(coords) = (coords.x, coords.y)
 
-Coords = namedtuple('Coords', 'x y')
-pair_to_coords = lambda pair: Coords(pair[0], pair[1])
+julia> pair_to_coords(pair) = (x=pair[1], y=pair[2])
 
-coords_to_pair = lambda coords: [coords.x, coords.y]
-
-coords_to_pair(pair_to_coords([1, 2])) # [1, 2]
-
-pair_to_coords(coords_to_pair(Coords(1, 2))) # Coords(x=1, y=2)
+julia> pair_to_coords(coords_to_pair((x=1, y=2)))
+(x = 1, y = 2)
 ```
 
 ### Homomorphism
 
-A homomorphism is just a structure preserving map. In fact, a functor is just a homomorphism between categories as it preserves the original category's structure under the mapping.
+A homomorphism is just a structure preserving map. Weaker than isomorphism in that it doesn't require `bijectivity`.
+In fact, a functor is just a homomorphism between categories as it preserves the original category's structure under the mapping.
 
-```python
-from pymonad import *
-f * A.unit(x) == A.unit(f(x))
-
-(lambda x: x.upper()) * (Either.unit("oreos")) == Either.unit("oreos".upper())
+Julia's `map` satisfy this (one-to-one/injective) unless the function is not "pure":
+```julia
+map(uppercase, ["oreos"]) == [uppercase("oreos")]
 ```
 
 ### Catamorphism
 
 A `reduce_right` function that applies a function against an accumulator and each value of the array (from right-to-left) to reduce it to a single value.
 
-```python
-from functools import reduce
-class Array(list):
+```julia
+julia> sum_by_reduce(vec) = foldr(+, vec)
 
-  def reduce_right(self, f, init):
-    return reduce(f, self[::-1], init)
-
-sum = lambda xs: xs.reduce_right(lambda acc, x: acc + x, 0)
-
-sum(Array([1, 2, 3, 4, 5])) # 15
+julia> sum_by_reduce([1,2,3])
+6
 ```
 
 ### Anamorphism
 
 An `unfold` function. An `unfold` is the opposite of `fold` (`reduce`). It generates a list from a single value.
 
-```python
+```julia
+julia> function unfold(f, seed)
+         function go(f, seed, acc)
+           res = f(seed)
+           return isnothing(res) ? acc : go(f, res[2], push!(acc, res[1]))
+           end
+         return go(f, seed, [])
+         end
+unfold (generic function with 1 method)
 
-def unfold(f, seed):
-  def go(f, seed, acc):
-    res = f(seed)
-    return go(f, res[1], acc + [res[0]]) if res else acc
+julia> countDown(n) = unfold(n->ifelse(n<=0, nothing, (n, n-1)), 3)
+countDown (generic function with 1 method)
 
-  return go(f, seed, [])
-```
-
-```python
-count_down = lambda n: unfold(lambda n: None if n <= 0 else (n, n - 1), n)
-
-count_down(5) # [5, 4, 3, 2, 1]
+julia> countDown(3)
+3-element Vector{Any}:
+ 3
+ 2
+ 1
 ```
 
 ### Hylomorphism
@@ -789,23 +774,26 @@ A function just like `reduce_right`. However, there's a difference:
 
 In paramorphism, your reducer's arguments are the current value, the reduction of all previous values, and the list of values that formed that reduction.
 
-```python
+```julia
 
-def para(reducer, accumulator, elements):
-  if not len(elements):
-    return accumulator
+julia> function para(reducer, accumulator, elements)
+         isempty(elements) && return accumulator
+         head, tail... = elements
+         return reducer(head, tail, para(reducer, accumulator, tail))
+       end
 
-  head = elements[0]
-  tail = elements[1:]
+julia> suffixes(lst) = para((x, xs, sxs) -> [[xs]; sxs], [], lst)
 
-  return reducer(head, tail, para(reducer, accumulator, tail))
-
-suffixes = lambda lst: para(lambda x, xs, suffxs: [xs, *suffxs], [], lst)
-
-suffixes([1, 2, 3, 4, 5]) # [[2, 3, 4, 5], [3, 4, 5], [4, 5], [5], []]
+julia> suffixes([1,2,3,4,5])
+5-element Vector{Any}:
+ [2, 3, 4, 5]
+ [3, 4, 5]
+ [4, 5]
+ [5]
+ Int64[]
 ```
 
-The third parameter in the reducer (in the above example, `[x, *xs]`) is kind of like having a history of what got you to your current acc value.
+The third parameter in the reducer (in the above example, `[[xs]; sxs]`) is kind of like having a history of what got you to your current acc value.
 
 ### Apomorphism
 
@@ -815,28 +803,18 @@ it's the opposite of paramorphism, just as anamorphism is the opposite of catamo
 
 An object that has an `equals` function which can be used to compare other objects of the same type.
 
-Make array a setoid:
-
-```python 
-
-class Array(list):
-
-  def equals(self, other):
-    if len(self) != len(other):
-      return False 
-    else:
-      return reduce(lambda ident, pair: ident and (pair[0] == pair[1]), zip(self[:], other[:]), True)
-
-Array([1, 2]).equals(Array([1, 2])) # true
-Array([1, 2]).equals(Array([0])) # false
-```
+In `Julia`, just use `isequal(obj1, obj2)`
 
 ## Semigroup
 
 An object that has a `concat` function that combines it with another object of the same type.
 
-```python
-[1] + [2] # [1, 2]
+```julia
+# column-major
+julia> vcat([1], [2])
+2-element Vector{Int64}:
+ 1
+ 2
 ```
 
 ## Foldable
@@ -844,46 +822,46 @@ An object that has a `concat` function that combines it with another object of t
 An object that has a `reduce` function that applies a function against an accumulator and each element in the array (from left to right) to reduce it to a single value.
 
 ```python
-sum = lambda lst: reduce(lambda acc, x: acc + x, lst, 0)
-sum([1, 2, 3]) # 6
+julia> sum_by_reduce(vec) = reduce(+, vec)
+
+julia> sum_by_reduce([1,2,3])
+6
 ```
 
 ## Lens ##
 A lens is a structure (often an object or function) that pairs a getter and a non-mutating setter for some other data
 structure.
 
-```python
-from lenses import lens
-# Using [python-lenses](https://python-lenses.readthedocs.io/en/latest/tutorial/methods.html)
+A popular implementation is [Accessors.jl](https://github.com/JuliaObjects/Accessors.jl)
 
-name_lens = lens['name'] # we create an unbound lens which accesses the value associate with the 'name' key of a dict
-```
+```julia
+julia> using Accessors
 
-Having the pair of get and set for a given data structure enables a few key features.
+# this is immutable
+julia> struct T
+            a
+            b
+        end
 
-```python
-person = {'name': 'Gertrude Blanch'}
+julia> obj = T("AA", "BB");
 
-# invoke the getter
-name_lens.get()(person) # 'Gertrude Blanch'
+julia> obj.a = "aa"
+ERROR: setfield!: immutable struct of type T cannot be changed
 
-# invoke the setter
-name_lens.set('Shafi Goldwasser')(person) # {'name': 'Shafi Goldwasser'}
+julia> lens = @optic _.a
+(@optic _.a)
 
-# run a function on the value in the structure
-name_lens.modify(lambda x: x.upper())(person) # {'name': 'GERTRUDE BLANCH'}
-```
+julia> lens(obj)
+"AA"
 
-Lenses are also composable. This allows easy immutable updates to deeply nested data.
+julia> set(obj, lens, 2)
+T(2, "BB")
 
-```python
-# This lens focuses on the first item in a non-empty array
-first_lens = lens[0]
+julia> obj # the object was not mutated, instead an updated copy was created
+T("AA", "BB")
 
-people = [{'name': 'Gertrude Blanch'}, {'name': 'Shafi Goldwasser'}]
-
-# Despite what you may assume, lenses compose left-to-right.
-(first_lens & name_lens).modify(lambda x: x.upper())(people) # [{'name': 'GERTRUDE BLANCH'}, {'name': 'Shafi Goldwasser'}]
+julia> modify(lowercase, obj, lens)
+T("aa", "BB")
 ```
 
 ## Type Signatures
@@ -892,30 +870,17 @@ Often functions in JavaScript will include comments that indicate the types of t
 
 There's quite a bit of variance across the community but they often follow the following patterns:
 
-```python
-# function :: a -> b -> c
-
+```julia
 # add :: int -> int -> int
-# alternatively could be float -> float -> float
-add = lambda y: lambda x: x + y
+myadd1 = (x::Int -> y::Int -> x + y)::Int
 
 # increment :: int -> int
-increment = lambda x: x + 1
+increment(x::Int)::Int = x + 1
 ```
 
-If a function accepts another function as an argument it is wrapped in parentheses.
-
-```python
-# call :: (a -> b) -> a -> b
-call = lambda f: lambda x: f(x)
-```
-
-The letters `a`, `b`, `c`, `d` are used to signify that the argument can be of any type. The following version of `map` takes a function that transforms a value of some type `a` into another type `b`, an array of values of type `a`, and returns an array of values of type `b`.
-
-```python
-# map :: (a -> b) -> [a] -> [b]
-map(f, lst)
-```
+Due to JIT, it's better to NOT over-specificy types, because it only reduces the genrality of your function
+without any speed gain, also see [Multiple Dispatch](https://docs.julialang.org/en/v1/manual/methods/#Parametric-Methods) for
+more idiomatic way to write parametric methods in Julia.
 
 __Further reading__
 * [Ramda's type signatures](https://github.com/ramda/ramda/wiki/Type-Signatures)
@@ -928,30 +893,46 @@ A composite type made from putting other types together. Two common classes of a
 ### Sum type
 A Sum type is the combination of two types together into another one. It is called sum because the number of possible values in the result type is the sum of the input types.
 
-JavaScript doesn't have types like this (neither does python) but we can use `Set`s to pretend:
-```python
-# imagine that rather than sets here we have types that can only have these values
-bools = set([True, False])
-half_true = set(['half-true'])
+In Julia, it's almost the same as [Type Unions](https://docs.julialang.org/en/v1/manual/types/#Type-Unions), albeit some implementation details
+and lack of pattern matching, but because Julia is a dynamic language (i.e. behavior always correct when you take a value out of a union typed
+container), the line is blurred.
 
-# The weakLogic type contains the sum of the values from bools and halfTrue
-weak_logic_values = bools.union(half_true)
+```python
+julia> a = Union{Float64, Int}[1,2,3]
+3-element Vector{Union{Float64, Int64}}:
+ 1
+ 2
+ 3
+
+julia> typeof.(a)
+3-element Vector{DataType}:
+ Int64
+ Int64
+ Int64
+
+julia> a = Union{Float64, Int}[1,2,3.0]
+3-element Vector{Union{Float64, Int64}}:
+ 1
+ 2
+ 3.0
+
+julia> typeof.(a)
+3-element Vector{DataType}:
+ Int64
+ Int64
+ Float64
 ```
 
 Sum types are sometimes called union types, discriminated unions, or tagged unions.
 
-The [sumtypes](https://github.com/radix/sumtypes/) library in Python helps with defining and using union types.
+See an implementation [SumTypes.jl](https://github.com/MasonProtter/SumTypes.jl).
 
 ### Product type
 
 A **product** type combines types together in a way you're probably more familiar with:
 
-```python
-from collections import namedtuple
-
-Point = namedtuple('Point', 'x y')
-# point :: (Number, Number) -> {x: Number, y: Number}
-point = lambda pair: Point(x, y)
+```julia
+point(p) = (x=p[1], y=p[2])
 ```
 It's called a product because the total possible values of the data structure is the product of the different values. Many languages have a tuple type which is the simplest formulation of a product type.
 
@@ -962,144 +943,30 @@ Option is a [sum type](#sum-type) with two cases often called `Some` and `None`.
 
 Option is useful for composing functions that might not return a value.
 
-```python
-# Naive definition
+```julia
+help?> Some
+search: Some something @something @showtime VersionNumber test_colorscheme DimensionMismatch sortperm
 
-class _Some:
-  
-  def __init__(self, v):
-    self.val = v
+  Some{T}
 
-  def map(self, f):
-    return _Some(f(self.val))
 
-  def chain(self, f):
-    return f(self.val)
-  
-# None is a keyword in python
-class _None:
+  A wrapper type used in `Union{Some{T}, Nothing}` to distinguish between the absence of a value (`nothing`)
+  and the presence of a `nothing` value (i.e. `Some(nothing)`).
 
-  def map(self, f):
-    return self
-
-  def chain(self, f):
-    return self
-
-# maybe_prop :: String -> (String => a) -> Option a
-maybe_prop = lambda key, obj: _None() if key not in obj else Some(obj[key])
+  Use `something` to access the value wrapped by a Some object.
 ```
-Use `chain` to sequence functions that return `Option`s
-```python
-
-# get_item :: Cart -> Option CartItem
-get_item = lambda cart: maybe_prop('item', cart)
-
-# get_price :: Cart -> Option Float
-get_price = lambda item: maybe_prop('price', item)
-
-# get_nested_price :: Cart -> Option a
-get_nested_price = lambda cart: get_item(cart).chain(get_price)
-
-get_nested_price({}) # _None()
-get_nested_price({"item": {"foo": 1}}) # _None()
-get_nested_price({"item": {"price": 9.99}}) # _Some(9.99)
-```
-
-`Option` is also known as `Maybe`. `Some` is sometimes called `Just`. `None` is sometimes called `Nothing`.
+`Option` is also known as `Maybe`. `Some` is sometimes called `Just`. `None` is sometimes called `Nothing` (as in Julia).
 
 ## Function
 A **function** `f :: A => B` is an expression - often called arrow or lambda expression - with **exactly one (immutable)** parameter of type `A` and **exactly one** return value of type `B`. That value depends entirely on the argument, making functions context-independant, or [referentially transparent](#referential-transparency). What is implied here is that a function must not produce any hidden [side effects](#side-effects) - a function is always [pure](#purity), by definition. These properties make functions pleasant to work with: they are entirely deterministic and therefore predictable. Functions enable working with code as data, abstracting over behaviour:
 
-```python
-# times2 :: Number -> Number
-times2 = lambda n: n * 2
+```julia
+julia> times2(n::Number) = (n * 2)::Number
+times2 (generic function with 1 method)
 
-map(times2, [1, 2, 3] # [2, 4, 6]
+julia> map(times2, [1, 2, 3])
+3-element Vector{Int64}:
+ 2
+ 4
+ 6
 ```
-
-## Partial function
-A partial function is a [function](#function) which is not defined for all arguments - it might return an unexpected result or may never terminate. Partial functions add cognitive overhead, they are harder to reason about and can lead to runtime errors. Some examples:
-```python
-from functools import partial
-# example 1: sum of the list
-# sum :: [int] -> int
-sum = partial(reduce, lambda a, b: a + b, arr)
-sum([1, 2, 3]) # 6
-sum([])        # TypeError: reduce() of empty sequence with no initial value
-
-# example 2: get the first item in list
-# first :: [a] -> a
-first = lambda a: a[0]
-first([42]) # 42
-first([])   # IndexError
-# or even worse:
-first([[42]])[0] # 42
-first([])[0]     # Uncaught TypeError: an IndexError is throw instead
-
-# example 3: repeat function N times
-# times :: int -> (int -> int) -> int
-times = lambda n: lambda fn: n and (fn(n), times(n - 1)(fn))
-times(3)(print)
-# 3
-# 2
-# 1
-# out: (None, (None, (None, 0)))
-times(-1)(print)
-# RecursionError: maximum recursion depth exceeded while calling a Python object
-```
-
-### Dealing with partial functions
-Partial functions are dangerous as they need to be treated with great caution. You might get an unexpected (wrong) result or run into runtime errors. Sometimes a partial function might not return at all. Being aware of and treating all these edge cases accordingly can become very tedious.
-Fortunately a partial function can be converted to a regular (or total) one. We can provide default values or use guards to deal with inputs for which the (previously) partial function is undefined. Utilizing the [`Option`](#Option) type, we can yield either `Some(value)` or `None` where we would otherwise have behaved unexpectedly:
-```python
-
-# re-order function arguments for easier partial function application
-_reduce = lambda fn, init, seq: reduce(fn, seq, init) 
-# example 1: sum of the list
-# we can provide default value so it will always return result
-# sum :: [int] -> int
-
-sum = partial(_reduce, lambda a, b: a + b, 0)
-sum([1, 2, 3]) # 6
-sum([]) # 0
-
-# example 2: get the first item in list
-# change result to Option
-# first :: [A] -> Option A
-first = lambda a: _Some(a[0]) if len(a) else _None()
-first([42]).map(print) # 42
-first([]).map(print) # print won't execute at all
-# our previous worst case
-first([[42]]).map(lambda a: print(a[0])) # 42
-first([]).map(lambda a: print(a[0])) # won't execute, so we won't have error here
-# more of that, you will know by function return type (Option)
-# that you should use `.map` method to access the data and you will never forget
-# to check your input because such check become built-in into the function
-
-# example 3: repeat function N times
-# we should make function always terminate by changing conditions:
-# times :: int -> (int -> int) -> int
-times = lambda n: lambda fn: n > 0 and (fn(n), times(n - 1)(fn))
-times(3)(print)
-# 3
-# 2
-# 1
-times(-1)(print)
-# won't execute anything
-```
-Making your partial functions total ones, these kinds of runtime errors can be prevented. Always returning a value will also make for code that is both easier to maintain as well as to reason about.
-
-## Functional Programming Libraries in Python
-
-### In This Doc
-  * [functools](https://docs.python.org/3/library/functools.html)
-  * [oslash](https://github.com/dbrattli/oslash)
-  * [python-lenses](https://github.com/ingolemo/python-lenses)
-  * [pymonad](https://bitbucket.org/jason_delaat/pymonad)
-  * [toolz](https://github.com/pytoolz/toolz)
-
-A comprehensive curated list of functional programming libraries for Python can be found [here](https://github.com/sfermigier/awesome-functional-python)
-
----
-
-__P.S:__ This repo is successful due to the wonderful [contributions](https://github.com/hemanth/functional-programming-jargon/graphs/contributors)!

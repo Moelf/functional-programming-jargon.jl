@@ -130,12 +130,18 @@ Partially applying a function means creating a new function by pre-filling some 
 julia> add3(a, b, c) = a + b + c
 add3 (generic function with 1 method)
 
-julia> partial(f, args...) = x -> f(args..., x)
+julia> partial(f, args...) = (x...) -> f(args..., x...)
 
 julia> five_plus = partial(add3, 2, 3)
 
 julia> five_plus(4)
 9
+
+julia> one_plus_plus = partial(add3, 1)
+#1 (generic function with 1 method)
+
+julia> one_plus_plus(2,3)
+6
 
 #special case of 2-arguments original function
 julia> six_plus = Base.Fix1(+, 6)

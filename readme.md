@@ -2,7 +2,7 @@
 
 Functional programming (FP) provides many advantages, and its popularity has been increasing as a result. However, each programming paradigm comes with its own unique jargon and FP is no exception. By providing a glossary, we hope to make learning FP easier.
 
-This is a fork of [Functional Programming Jargon](https://github.com/hemanth/functional-programming-jargon). Examples are presented in [Julia](julialang.org).
+This is a fork of [Functional Programming Jargon](https://github.com/hemanth/functional-programming-jargon). Examples are presented in [Julia](https://www.julialang.org).
 
 This document is WIP and pull requests are welcome!
 
